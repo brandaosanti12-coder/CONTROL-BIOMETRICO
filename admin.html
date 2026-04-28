@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel de Registros</title>
+
+<style>
+body {
+  font-family: Arial;
+  padding: 20px;
+  background: #f4f6f9;
+}
+
+h2 {
+  text-align: center;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: #007BFF;
+  color: white;
+}
+
+button {
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+</style>
+
+</head>
+<body>
+
+<h2>Panel de Registros</h2>
+
+<button onclick="exportar()">Descargar Excel</button>
+
+<button onclick="borrarTodo()" style="background:red;color:white;">
+  Eliminar todos los registros
+</button>
+
+<table>
+<thead>
+<tr>
+  <th>Nombre</th>
+  <th>Fecha</th>
+  <th>Salida</th>
+  <th>Regreso</th>
+</tr>
+</thead>
+<tbody id="tabla"></tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
+  authDomain: "registro-bionetrico.firebaseapp.com",
+  projectId: "registro-bionetrico",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const tabla = document.getElementById("tabla");
+
+// 🔧 FORMATEAR HORA
+function formatearHora(timestamp) {
+  try {
+    if (!timestamp) return "";
+    if (timestamp.seconds) {
+      const fecha = new Date(timestamp.seconds * 1000);
+      return fecha.toLocaleTimeString();
+    }
+    return "";
+  } catch (e) {
+    return "";
+  }
+}
+
+// 🔥 CARGAR DATOS
+async function cargar() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "registros"));
+
+    tabla.innerHTML = "";
+
+    querySnapshot.forEach(docSnap => {
+      const d = docSnap.data();
+
+      tabla.innerHTML += `
+        <tr>
+          <td>${d.nombre || ""}</td>
+          <td>${d.fecha || ""}</td>
+          <td>${formatearHora(d.salida)}</td>
+          <td>${formatearHora(d.regreso)}</td>
+        </tr>
+      `;
+    });
+
+  } catch (error) {
+    console.error("Error cargando datos:", error);
+    alert("Error al cargar datos");
+  }
+}
+
+// 📥 EXPORTAR EXCEL
+window.exportar = async function () {
+  try {
+    const querySnapshot = await getDocs(collection(db, "registros"));
+
+    let csv = "Nombre;Fecha;Salida;Regreso\n";
+
+    querySnapshot.forEach(docSnap => {
+      const d = docSnap.data();
+
+      const salida = formatearHora(d.salida);
+      const regreso = formatearHora(d.regreso);
+
+      csv += `${d.nombre};${d.fecha};${salida};${regreso}\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "registros.csv";
+    a.click();
+
+  } catch (error) {
+    console.error("Error exportando:", error);
+    alert("Error al exportar Excel");
+  }
+};
+
+// 🧨 BORRAR TODO
+window.borrarTodo = async function () {
+
+  const confirmar = confirm("⚠️ ¿Seguro que deseas eliminar TODOS los registros?");
+  if (!confirmar) return;
+
+  try {
+    const querySnapshot = await getDocs(collection(db, "registros"));
+
+    for (const documento of querySnapshot.docs) {
+      await deleteDoc(doc(db, "registros", documento.id));
+    }
+
+    alert("Registros eliminados correctamente");
+    cargar();
+
+  } catch (error) {
+    console.error("Error eliminando:", error);
+    alert("Error al eliminar");
+  }
+};
+
+// 🚀 INICIAR
+cargar();
+
+</script>
+
+</body>
+</html>
