@@ -23,10 +23,6 @@ body {
   box-shadow: 0 0 20px rgba(0,0,0,0.2);
 }
 
-h2 {
-  font-size: 28px;
-}
-
 select, button {
   font-size: 18px;
   padding: 12px;
@@ -36,22 +32,28 @@ select, button {
 }
 
 button {
-  background: #28a745;
-  color: white;
   border: none;
   cursor: pointer;
 }
 
-button:hover {
-  background: #218838;
+#salidaBtn {
+  background: #ffc107;
+}
+
+#retornoBtn {
+  background: #28a745;
+  color: white;
+}
+
+button:disabled {
+  background: #ccc !important;
+  cursor: not-allowed;
 }
 
 #msg {
-  font-size: 18px;
   font-weight: bold;
 }
 
-/* 🔥 MENSAJE INFERIOR */
 .footer {
   position: fixed;
   bottom: 10px;
@@ -70,7 +72,7 @@ button:hover {
 <div class="box">
   <h2>Registro de Almuerzo</h2>
 
-  <!-- 🔽 ÁREA -->
+  <!-- AREA -->
   <select id="area" onchange="cargarEmpleados()">
     <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
@@ -78,20 +80,26 @@ button:hover {
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <!-- 🔽 EMPLEADOS -->
-  <select id="nombre">
+  <!-- EMPLEADOS -->
+  <select id="nombre" onchange="verEstado()">
     <option value="">Selecciona tu nombre</option>
   </select>
 
-  <button onclick="registrar()">Registrar</button>
+  <!-- BOTONES -->
+  <button id="salidaBtn" onclick="marcarSalida()">Salida al almuerzo</button>
+  <button id="retornoBtn" onclick="marcarRetorno()">Retorno del almuerzo</button>
 
   <p id="msg"></p>
+  <p id="horaSalida"></p>
+  <p id="horaRetorno"></p>
 </div>
 
-<!-- 🔻 MENSAJE -->
 <div class="footer">
   Diseñado, elaborado y desarrollado por Navarrete Logistics
 </div>
+
+<!-- 🔊 AUDIO -->
+<audio id="audioSalida" src="salida.mp3"></audio>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -106,84 +114,100 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔥 EMPLEADOS POR ÁREA
+// EMPLEADOS POR AREA
 const empleadosPorArea = {
-  "PLAYA": [
-    "LEONARDO FLORES",
-    "RENE CHICAIZA",
-    "KEVIN ESCOBAR",
-    "ESTEBAN MALDONADO",
-    "RUBEN YANEZ"
-  ],
-  "FACTURACION": [
-    "STEFANY PISANAN",
-    "DIEGO MELENDEZ",
-    "ANA MOROCHO",
-    "MARLON TENE"
-  ],
-  "OFICINA": [
-    "BRANDON NAVARRETE",
-    "ANDRES SUASTE",
-    "HECTOR TORRES",
-    "IBETH BERMEO",
-    "MARIA JOSE CASTRO",
-    "MARIA JOSE SANDOVAL",
-    "JIMI CELI"
-  ]
+  "PLAYA": ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
+  "FACTURACION": ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
+  "OFICINA": ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
+// CARGAR EMPLEADOS
 window.cargarEmpleados = function () {
   const area = document.getElementById("area").value;
   const select = document.getElementById("nombre");
 
   select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
-  if (empleadosPorArea[area]) {
-    empleadosPorArea[area].forEach(nombre => {
-      const option = document.createElement("option");
-      option.textContent = nombre;
-      option.value = nombre;
-      select.appendChild(option);
-    });
-  }
+  empleadosPorArea[area]?.forEach(n => {
+    const opt = document.createElement("option");
+    opt.value = n;
+    opt.textContent = n;
+    select.appendChild(opt);
+  });
 };
 
-// 🧠 REGISTRO
-window.registrar = async function () {
+// VER ESTADO
+window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
-
-  if (!nombre) {
-    alert("Selecciona tu nombre");
-    return;
-  }
+  if (!nombre) return;
 
   const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      nombre,
-      fecha: hoy,
-      salida: serverTimestamp(),
-      regreso: null
-    });
+  const salidaBtn = document.getElementById("salidaBtn");
+  const retornoBtn = document.getElementById("retornoBtn");
 
-    document.getElementById("msg").innerText = "Salida registrada correctamente";
-  } else {
-    const data = snap.data();
+  salidaBtn.disabled = false;
+  retornoBtn.disabled = true;
 
-    if (!data.regreso) {
-      await updateDoc(ref, {
-        regreso: serverTimestamp()
-      });
+  document.getElementById("horaSalida").innerText = "";
+  document.getElementById("horaRetorno").innerText = "";
 
-      document.getElementById("msg").innerText = "Regreso registrado correctamente";
-    } else {
-      document.getElementById("msg").innerText = "Ya registraste hoy";
+  if (snap.exists()) {
+    const d = snap.data();
+
+    if (d.salida) {
+      salidaBtn.disabled = true;
+      document.getElementById("horaSalida").innerText =
+        "Salida: " + new Date(d.salida.seconds * 1000).toLocaleTimeString();
+      retornoBtn.disabled = false;
+    }
+
+    if (d.regreso) {
+      retornoBtn.disabled = true;
+      document.getElementById("horaRetorno").innerText =
+        "Retorno: " + new Date(d.regreso.seconds * 1000).toLocaleTimeString();
     }
   }
+};
+
+// SALIDA
+window.marcarSalida = async function () {
+  const nombre = document.getElementById("nombre").value;
+  if (!nombre) return alert("Selecciona tu nombre");
+
+  const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", nombre + "_" + hoy);
+
+  await setDoc(ref, {
+    nombre,
+    fecha: hoy,
+    salida: serverTimestamp(),
+    regreso: null
+  });
+
+  document.getElementById("msg").innerText = "Salida registrada";
+
+  // 🔊 AUDIO
+  const audio = document.getElementById("audioSalida");
+  audio.play();
+
+  verEstado();
+};
+
+// RETORNO
+window.marcarRetorno = async function () {
+  const nombre = document.getElementById("nombre").value;
+  const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", nombre + "_" + hoy);
+
+  await updateDoc(ref, {
+    regreso: serverTimestamp()
+  });
+
+  document.getElementById("msg").innerText = "Retorno registrado";
+  verEstado();
 };
 </script>
 
