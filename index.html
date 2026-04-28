@@ -32,7 +32,11 @@ select, button {
 
 button:disabled {
   background: #ccc !important;
+  cursor: not-allowed;
 }
+
+#salidaBtn { background: #ffc107; }
+#retornoBtn { background: #28a745; color: white; }
 
 .footer {
   position: fixed;
@@ -42,13 +46,14 @@ button:disabled {
   color: white;
 }
 </style>
-
 </head>
+
 <body>
 
 <div class="box">
   <h2>Registro de Almuerzo</h2>
 
+  <!-- AREA -->
   <select id="area" onchange="cargarEmpleados()">
     <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
@@ -56,12 +61,14 @@ button:disabled {
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <select id="nombre" onchange="verEstado()">
+  <!-- EMPLEADO -->
+  <select id="nombre" onchange="bloquearSeleccion(); verEstado()">
     <option value="">Selecciona tu nombre</option>
   </select>
 
-  <button id="salidaBtn" onclick="marcarSalida()">Salida</button>
-  <button id="retornoBtn" onclick="marcarRetorno()">Retorno</button>
+  <!-- BOTONES -->
+  <button id="salidaBtn" onclick="marcarSalida()">Salida al almuerzo</button>
+  <button id="retornoBtn" onclick="marcarRetorno()">Retorno del almuerzo</button>
 
   <p id="msg"></p>
   <p id="horaSalida"></p>
@@ -72,7 +79,10 @@ button:disabled {
   Diseñado, elaborado y desarrollado por Navarrete Logistics
 </div>
 
-<audio id="audioSalida" src="salida.mp3"></audio>
+<!-- 🔊 AUDIOS -->
+<audio id="audioPlaya" src="playa.mp3"></audio>
+<audio id="audioFacturacion" src="facturacion.mp3"></audio>
+<audio id="audioOficina" src="oficina.mp3"></audio>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -87,13 +97,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// EMPLEADOS
 const empleadosPorArea = {
   "PLAYA": ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   "FACTURACION": ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
   "OFICINA": ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
+// CARGAR EMPLEADOS
 window.cargarEmpleados = function () {
   const area = document.getElementById("area").value;
   const select = document.getElementById("nombre");
@@ -108,18 +119,37 @@ window.cargarEmpleados = function () {
   });
 };
 
-// 🔐 BLOQUEAR SI YA EXISTE USUARIO
-window.onload = function() {
-  const usuario = localStorage.getItem("empleado");
+// 🔐 BLOQUEAR SELECCIÓN
+window.bloquearSeleccion = function () {
+  const nombre = document.getElementById("nombre").value;
+  if (!nombre) return;
 
-  if (usuario) {
-    document.getElementById("nombre").innerHTML = `<option>${usuario}</option>`;
-    document.getElementById("nombre").disabled = true;
-    verEstado();
+  localStorage.setItem("empleado", nombre);
+  localStorage.setItem("area", document.getElementById("area").value);
+
+  document.getElementById("nombre").disabled = true;
+  document.getElementById("area").disabled = true;
+};
+
+// 🔁 RECUPERAR SESIÓN
+window.onload = function () {
+  const usuario = localStorage.getItem("empleado");
+  const area = localStorage.getItem("area");
+
+  if (usuario && area) {
+    document.getElementById("area").value = area;
+    cargarEmpleados();
+
+    setTimeout(() => {
+      document.getElementById("nombre").value = usuario;
+      document.getElementById("nombre").disabled = true;
+      document.getElementById("area").disabled = true;
+      verEstado();
+    }, 300);
   }
 };
 
-// 🔍 VER ESTADO
+// 🔍 ESTADO
 window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
   if (!nombre) return;
@@ -133,6 +163,9 @@ window.verEstado = async function () {
 
   salidaBtn.disabled = false;
   retornoBtn.disabled = true;
+
+  document.getElementById("horaSalida").innerText = "";
+  document.getElementById("horaRetorno").innerText = "";
 
   if (snap.exists()) {
     const d = snap.data();
@@ -152,13 +185,19 @@ window.verEstado = async function () {
   }
 };
 
+// 🔊 REPRODUCIR AUDIO SEGÚN ÁREA
+function reproducirAudio() {
+  const area = localStorage.getItem("area");
+
+  if (area === "PLAYA") document.getElementById("audioPlaya").play();
+  if (area === "FACTURACION") document.getElementById("audioFacturacion").play();
+  if (area === "OFICINA") document.getElementById("audioOficina").play();
+}
+
 // 🚀 SALIDA
 window.marcarSalida = async function () {
   const nombre = document.getElementById("nombre").value;
   if (!nombre) return alert("Selecciona tu nombre");
-
-  // 🔐 GUARDAR USUARIO LOCAL
-  localStorage.setItem("empleado", nombre);
 
   const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
@@ -171,15 +210,13 @@ window.marcarSalida = async function () {
   });
 
   document.getElementById("msg").innerText = "Salida registrada";
-  document.getElementById("audioSalida").play();
-
+  reproducirAudio();
   verEstado();
 };
 
 // 🔁 RETORNO
 window.marcarRetorno = async function () {
   const nombre = document.getElementById("nombre").value;
-
   const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
 
@@ -189,8 +226,9 @@ window.marcarRetorno = async function () {
 
   document.getElementById("msg").innerText = "Retorno registrado";
 
-  // 🔓 LIBERAR USUARIO
+  // 🔓 liberar
   localStorage.removeItem("empleado");
+  localStorage.removeItem("area");
 
   verEstado();
 };
