@@ -104,28 +104,32 @@ const empleadosPorArea = {
   "OFICINA": ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// CARGAR EMPLEADOS
+// 🔄 CARGAR EMPLEADOS
 window.cargarEmpleados = function () {
   const area = document.getElementById("area").value;
   const select = document.getElementById("nombre");
 
   select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
-  empleadosPorArea[area]?.forEach(n => {
-    const opt = document.createElement("option");
-    opt.value = n;
-    opt.textContent = n;
-    select.appendChild(opt);
-  });
+  if (empleadosPorArea[area]) {
+    empleadosPorArea[area].forEach(nombre => {
+      const option = document.createElement("option");
+      option.value = nombre;
+      option.textContent = nombre;
+      select.appendChild(option);
+    });
+  }
 };
 
-// 🔐 BLOQUEAR SELECCIÓN
+// 🔐 BLOQUEAR SOLO AL SELECCIONAR NOMBRE
 window.bloquearSeleccion = function () {
   const nombre = document.getElementById("nombre").value;
-  if (!nombre) return;
+  const area = document.getElementById("area").value;
+
+  if (!nombre || !area) return;
 
   localStorage.setItem("empleado", nombre);
-  localStorage.setItem("area", document.getElementById("area").value);
+  localStorage.setItem("area", area);
 
   document.getElementById("nombre").disabled = true;
   document.getElementById("area").disabled = true;
@@ -149,7 +153,7 @@ window.onload = function () {
   }
 };
 
-// 🔍 ESTADO
+// 🔍 VER ESTADO
 window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
   if (!nombre) return;
@@ -185,7 +189,7 @@ window.verEstado = async function () {
   }
 };
 
-// 🔊 REPRODUCIR AUDIO SEGÚN ÁREA
+// 🔊 AUDIO POR ÁREA
 function reproducirAudio() {
   const area = localStorage.getItem("area");
 
@@ -217,6 +221,7 @@ window.marcarSalida = async function () {
 // 🔁 RETORNO
 window.marcarRetorno = async function () {
   const nombre = document.getElementById("nombre").value;
+
   const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
 
@@ -226,7 +231,7 @@ window.marcarRetorno = async function () {
 
   document.getElementById("msg").innerText = "Retorno registrado";
 
-  // 🔓 liberar
+  // 🔓 liberar selección
   localStorage.removeItem("empleado");
   localStorage.removeItem("area");
 
