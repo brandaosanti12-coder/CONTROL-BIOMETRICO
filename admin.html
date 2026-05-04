@@ -32,6 +32,11 @@ th {
   color: white;
 }
 
+.rojo {
+  color: red;
+  font-weight: bold;
+}
+
 button {
   padding: 10px 15px;
   margin-bottom: 10px;
@@ -58,6 +63,7 @@ button {
   <th>Fecha</th>
   <th>Salida</th>
   <th>Regreso</th>
+  <th>Tiempo</th>
 </tr>
 </thead>
 <tbody id="tabla"></tbody>
@@ -80,94 +86,95 @@ const tabla = document.getElementById("tabla");
 
 // 🔧 FORMATEAR HORA
 function formatearHora(timestamp) {
-  try {
-    if (!timestamp) return "";
-    if (timestamp.seconds) {
-      const fecha = new Date(timestamp.seconds * 1000);
-      return fecha.toLocaleTimeString();
-    }
-    return "";
-  } catch (e) {
-    return "";
-  }
+  if (!timestamp || !timestamp.seconds) return "";
+  return new Date(timestamp.seconds * 1000).toLocaleTimeString();
+}
+
+// ⏱ CALCULAR TIEMPO
+function calcularTiempo(salida, regreso) {
+  if (!salida || !regreso) return { texto: "", exceso: false };
+
+  const inicio = salida.seconds * 1000;
+  const fin = regreso.seconds * 1000;
+
+  const diff = (fin - inicio) / 1000; // segundos
+
+  const minutos = Math.floor(diff / 60);
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+
+  const texto = `${horas}h ${mins}m`;
+
+  const exceso = minutos > 60;
+
+  return { texto, exceso };
 }
 
 // 🔥 CARGAR DATOS
 async function cargar() {
-  try {
-    const querySnapshot = await getDocs(collection(db, "registros"));
+  const querySnapshot = await getDocs(collection(db, "registros"));
+  tabla.innerHTML = "";
 
-    tabla.innerHTML = "";
+  querySnapshot.forEach(docSnap => {
+    const d = docSnap.data();
 
-    querySnapshot.forEach(docSnap => {
-      const d = docSnap.data();
+    const salida = formatearHora(d.salida);
+    const regreso = formatearHora(d.regreso);
 
-      tabla.innerHTML += `
-        <tr>
-          <td>${d.nombre || ""}</td>
-          <td>${d.fecha || ""}</td>
-          <td>${formatearHora(d.salida)}</td>
-          <td>${formatearHora(d.regreso)}</td>
-        </tr>
-      `;
-    });
+    const tiempo = calcularTiempo(d.salida, d.regreso);
 
-  } catch (error) {
-    console.error("Error cargando datos:", error);
-    alert("Error al cargar datos");
-  }
+    tabla.innerHTML += `
+      <tr>
+        <td>${d.nombre}</td>
+        <td>${d.fecha}</td>
+        <td>${salida}</td>
+        <td>${regreso}</td>
+        <td class="${tiempo.exceso ? 'rojo' : ''}">
+          ${tiempo.texto}
+        </td>
+      </tr>
+    `;
+  });
 }
 
 // 📥 EXPORTAR EXCEL
 window.exportar = async function () {
-  try {
-    const querySnapshot = await getDocs(collection(db, "registros"));
+  const querySnapshot = await getDocs(collection(db, "registros"));
 
-    let csv = "Nombre;Fecha;Salida;Regreso\n";
+  let csv = "Nombre;Fecha;Salida;Regreso;Tiempo\n";
 
-    querySnapshot.forEach(docSnap => {
-      const d = docSnap.data();
+  querySnapshot.forEach(docSnap => {
+    const d = docSnap.data();
 
-      const salida = formatearHora(d.salida);
-      const regreso = formatearHora(d.regreso);
+    const salida = formatearHora(d.salida);
+    const regreso = formatearHora(d.regreso);
+    const tiempo = calcularTiempo(d.salida, d.regreso);
 
-      csv += `${d.nombre};${d.fecha};${salida};${regreso}\n`;
-    });
+    csv += `${d.nombre};${d.fecha};${salida};${regreso};${tiempo.texto}\n`;
+  });
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "registros.csv";
-    a.click();
-
-  } catch (error) {
-    console.error("Error exportando:", error);
-    alert("Error al exportar Excel");
-  }
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "registros.csv";
+  a.click();
 };
 
 // 🧨 BORRAR TODO
 window.borrarTodo = async function () {
-
   const confirmar = confirm("⚠️ ¿Seguro que deseas eliminar TODOS los registros?");
   if (!confirmar) return;
 
-  try {
-    const querySnapshot = await getDocs(collection(db, "registros"));
+  const querySnapshot = await getDocs(collection(db, "registros"));
 
-    for (const documento of querySnapshot.docs) {
-      await deleteDoc(doc(db, "registros", documento.id));
-    }
-
-    alert("Registros eliminados correctamente");
-    cargar();
-
-  } catch (error) {
-    console.error("Error eliminando:", error);
-    alert("Error al eliminar");
+  for (const documento of querySnapshot.docs) {
+    await deleteDoc(doc(db, "registros", documento.id));
   }
+
+  alert("Registros eliminados correctamente");
+  cargar();
 };
 
 // 🚀 INICIAR
