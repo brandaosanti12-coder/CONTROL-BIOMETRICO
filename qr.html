@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>QR Diario</title>
+</head>
+
+<body style="text-align:center">
+
+<h2>QR Retorno Diario</h2>
+
+<img id="qr">
+
+<script>
+const hoy = new Date().toISOString().split("T")[0];
+
+const url = "https://TU-USUARIO.github.io/retorno.html?token=" + hoy;
+
+qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(url);
+</script>
+
+</body>
+</html>

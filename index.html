@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Registro Almuerzo</title>
+<title>Salida Almuerzo</title>
 
 <style>
 body {
@@ -12,7 +12,6 @@ body {
   color: white;
   padding: 50px;
 }
-
 .box {
   background: white;
   color: black;
@@ -21,29 +20,11 @@ body {
   width: 320px;
   margin: auto;
 }
-
 select, button {
   font-size: 18px;
   padding: 12px;
   margin: 10px;
   width: 100%;
-  border-radius: 8px;
-}
-
-button:disabled {
-  background: #ccc !important;
-  cursor: not-allowed;
-}
-
-#salidaBtn { background: #ffc107; }
-#retornoBtn { background: #28a745; color: white; }
-
-.footer {
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  font-size: 12px;
-  color: white;
 }
 </style>
 </head>
@@ -51,9 +32,8 @@ button:disabled {
 <body>
 
 <div class="box">
-  <h2>Registro de Almuerzo</h2>
+  <h2>Salida a Almuerzo</h2>
 
-  <!-- AREA -->
   <select id="area" onchange="cargarEmpleados()">
     <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
@@ -61,181 +41,62 @@ button:disabled {
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <!-- EMPLEADO -->
-  <select id="nombre" onchange="bloquearSeleccion(); verEstado()">
+  <select id="nombre" onchange="bloquearSeleccion()">
     <option value="">Selecciona tu nombre</option>
   </select>
 
-  <!-- BOTONES -->
-  <button id="salidaBtn" onclick="marcarSalida()">Salida al almuerzo</button>
-  <button id="retornoBtn" onclick="marcarRetorno()">Retorno del almuerzo</button>
-
+  <button onclick="marcarSalida()">Registrar salida</button>
   <p id="msg"></p>
-  <p id="horaSalida"></p>
-  <p id="horaRetorno"></p>
 </div>
 
-<div class="footer">
-  Diseñado, elaborado y desarrollado por Navarrete Logistics
-</div>
-
-<!-- 🔊 AUDIOS -->
 <audio id="audioPlaya" src="playa.mp3"></audio>
 <audio id="audioFacturacion" src="facturacion.mp3"></audio>
 <audio id="audioOficina" src="oficina.mp3"></audio>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
+const app = initializeApp({
+  apiKey: "TU_API_KEY",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
-};
-
-const app = initializeApp(firebaseConfig);
+});
 const db = getFirestore(app);
 
-// EMPLEADOS
-const empleadosPorArea = {
-  "PLAYA": ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
-  "FACTURACION": ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
-  "OFICINA": ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
+const empleados = {
+  PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
+  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
+  OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
-window.cargarEmpleados = function () {
-  const area = document.getElementById("area").value;
-  const select = document.getElementById("nombre");
-
-  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
-
-  if (empleadosPorArea[area]) {
-    empleadosPorArea[area].forEach(nombre => {
-      const option = document.createElement("option");
-      option.value = nombre;
-      option.textContent = nombre;
-      select.appendChild(option);
-    });
-  }
+window.cargarEmpleados = () => {
+  const area = areaSelect.value;
+  nombre.innerHTML = '<option>Selecciona tu nombre</option>';
+  empleados[area]?.forEach(n => {
+    let o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    nombre.appendChild(o);
+  });
 };
 
-// 🔐 BLOQUEAR SOLO AL SELECCIONAR NOMBRE
-window.bloquearSeleccion = function () {
-  const nombre = document.getElementById("nombre").value;
-  const area = document.getElementById("area").value;
-
-  if (!nombre || !area) return;
-
-  localStorage.setItem("empleado", nombre);
-  localStorage.setItem("area", area);
-
-  document.getElementById("nombre").disabled = true;
-  document.getElementById("area").disabled = true;
+window.bloquearSeleccion = () => {
+  localStorage.setItem("empleado", nombre.value);
+  localStorage.setItem("area", areaSelect.value);
+  areaSelect.disabled = true;
+  nombre.disabled = true;
 };
 
-// 🔁 RECUPERAR SESIÓN
-window.onload = function () {
-  const usuario = localStorage.getItem("empleado");
-  const area = localStorage.getItem("area");
-
-  if (usuario && area) {
-    document.getElementById("area").value = area;
-    cargarEmpleados();
-
-    setTimeout(() => {
-      document.getElementById("nombre").value = usuario;
-      document.getElementById("nombre").disabled = true;
-      document.getElementById("area").disabled = true;
-      verEstado();
-    }, 300);
-  }
-};
-
-// 🔍 VER ESTADO
-window.verEstado = async function () {
-  const nombre = document.getElementById("nombre").value;
-  if (!nombre) return;
-
+window.marcarSalida = async () => {
+  const nombre = localStorage.getItem("empleado");
   const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", nombre + "_" + hoy);
-  const snap = await getDoc(ref);
 
-  const salidaBtn = document.getElementById("salidaBtn");
-  const retornoBtn = document.getElementById("retornoBtn");
-
-  salidaBtn.disabled = false;
-  retornoBtn.disabled = true;
-
-  document.getElementById("horaSalida").innerText = "";
-  document.getElementById("horaRetorno").innerText = "";
-
-  if (snap.exists()) {
-    const d = snap.data();
-
-    if (d.salida) {
-      salidaBtn.disabled = true;
-      retornoBtn.disabled = false;
-      document.getElementById("horaSalida").innerText =
-        "Salida: " + new Date(d.salida.seconds * 1000).toLocaleTimeString();
-    }
-
-    if (d.regreso) {
-      retornoBtn.disabled = true;
-      document.getElementById("horaRetorno").innerText =
-        "Retorno: " + new Date(d.regreso.seconds * 1000).toLocaleTimeString();
-    }
-  }
-};
-
-// 🔊 AUDIO POR ÁREA
-function reproducirAudio() {
-  const area = localStorage.getItem("area");
-
-  if (area === "PLAYA") document.getElementById("audioPlaya").play();
-  if (area === "FACTURACION") document.getElementById("audioFacturacion").play();
-  if (area === "OFICINA") document.getElementById("audioOficina").play();
-}
-
-// 🚀 SALIDA
-window.marcarSalida = async function () {
-  const nombre = document.getElementById("nombre").value;
-  if (!nombre) return alert("Selecciona tu nombre");
-
-  const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", nombre + "_" + hoy);
-
-  await setDoc(ref, {
-    nombre,
-    fecha: hoy,
-    salida: serverTimestamp(),
-    regreso: null
+  await setDoc(doc(db,"registros",nombre+"_"+hoy), {
+    nombre, fecha:hoy, salida:serverTimestamp(), regreso:null
   });
 
-  document.getElementById("msg").innerText = "Salida registrada";
-  reproducirAudio();
-  verEstado();
-};
-
-// 🔁 RETORNO
-window.marcarRetorno = async function () {
-  const nombre = document.getElementById("nombre").value;
-
-  const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", nombre + "_" + hoy);
-
-  await updateDoc(ref, {
-    regreso: serverTimestamp()
-  });
-
-  document.getElementById("msg").innerText = "Retorno registrado";
-
-  // 🔓 liberar selección
-  localStorage.removeItem("empleado");
-  localStorage.removeItem("area");
-
-  verEstado();
+  msg.innerText = "Salida registrada";
 };
 </script>
 

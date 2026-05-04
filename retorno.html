@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Retorno</title>
+</head>
+
+<body style="text-align:center; background:#28a745; color:white;">
+
+<h2>Retorno Almuerzo</h2>
+<button onclick="marcarRetorno()">Registrar retorno</button>
+<p id="msg"></p>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey: "TU_API_KEY",
+  authDomain: "registro-bionetrico.firebaseapp.com",
+  projectId: "registro-bionetrico",
+});
+const db = getFirestore(app);
+
+// 🔐 VALIDACIÓN QR
+function validarQR() {
+  const token = new URLSearchParams(location.search).get("token");
+  const hoy = new Date().toISOString().split("T")[0];
+  return token === hoy;
+}
+
+window.marcarRetorno = async () => {
+
+  if (!validarQR()) {
+    document.body.innerHTML = "<h2>QR inválido</h2>";
+    return;
+  }
+
+  const nombre = localStorage.getItem("empleado");
+  const hoy = new Date().toISOString().split("T")[0];
+
+  await updateDoc(doc(db,"registros",nombre+"_"+hoy), {
+    regreso:serverTimestamp()
+  });
+
+  msg.innerText = "Retorno registrado";
+
+  localStorage.clear();
+};
+</script>
+
+</body>
+</html>
