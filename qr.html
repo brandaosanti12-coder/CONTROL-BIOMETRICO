@@ -14,9 +14,11 @@
 <script>
 const hoy = new Date().toISOString().split("T")[0];
 
+// 🔴 CAMBIA ESTO
 const url = "https://TU-USUARIO.github.io/retorno.html?token=" + hoy;
 
-qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(url);
+document.getElementById("qr").src =
+  "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(url);
 </script>
 
 </body>
