@@ -1,44 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Salida Almuerzo</title>
+
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  background: linear-gradient(135deg, #007BFF, #00c6ff);
+  color: white;
+  padding: 50px;
+}
+
+.box {
+  background: white;
+  color: black;
+  padding: 30px;
+  border-radius: 15px;
+  width: 320px;
+  margin: auto;
+}
+
+select, button {
+  font-size: 18px;
+  padding: 12px;
+  margin: 10px;
+  width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Salida a Almuerzo</h2>
+
+  <select id="area">
+    <option value="">Selecciona área</option>
+    <option value="PLAYA">PLAYA</option>
+    <option value="FACTURACION">FACTURACIÓN</option>
+    <option value="OFICINA">OFICINA</option>
+  </select>
+
+  <select id="nombre">
+    <option value="">Selecciona tu nombre</option>
+  </select>
+
+  <button id="btnSalida">Registrar salida</button>
+
+  <p id="msg"></p>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-  apiKey: "TU_API_KEY",
+// 🔴 CONFIG FIREBASE (USA EL TUYO)
+const firebaseConfig = {
+  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
-});
+};
 
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔧 REFERENCIAS CORRECTAS
+// 🔧 REFERENCIAS
 const areaSelect = document.getElementById("area");
 const nombreSelect = document.getElementById("nombre");
+const btnSalida = document.getElementById("btnSalida");
 const msg = document.getElementById("msg");
 
-// EMPLEADOS
+// 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
   OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// ✅ AHORA SÍ FUNCIONA
-window.cargarEmpleados = function () {
+// 🔄 CARGAR EMPLEADOS
+areaSelect.addEventListener("change", () => {
   const area = areaSelect.value;
 
   nombreSelect.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
   if (empleados[area]) {
-    empleados[area].forEach(n => {
-      const opt = document.createElement("option");
-      opt.value = n;
-      opt.textContent = n;
-      nombreSelect.appendChild(opt);
+    empleados[area].forEach(nombre => {
+      const option = document.createElement("option");
+      option.value = nombre;
+      option.textContent = nombre;
+      nombreSelect.appendChild(option);
     });
   }
-};
+});
 
-window.bloquearSeleccion = function () {
+// 🔐 BLOQUEAR
+nombreSelect.addEventListener("change", () => {
   const nombre = nombreSelect.value;
   const area = areaSelect.value;
 
@@ -49,9 +107,10 @@ window.bloquearSeleccion = function () {
 
   areaSelect.disabled = true;
   nombreSelect.disabled = true;
-};
+});
 
-window.marcarSalida = async function () {
+// 🚀 REGISTRAR SALIDA
+btnSalida.addEventListener("click", async () => {
   const nombre = localStorage.getItem("empleado");
 
   if (!nombre) {
@@ -61,13 +120,21 @@ window.marcarSalida = async function () {
 
   const hoy = new Date().toISOString().split("T")[0];
 
-  await setDoc(doc(db, "registros", nombre + "_" + hoy), {
-    nombre,
-    fecha: hoy,
-    salida: serverTimestamp(),
-    regreso: null
-  });
+  try {
+    await setDoc(doc(db, "registros", nombre + "_" + hoy), {
+      nombre,
+      fecha: hoy,
+      salida: serverTimestamp(),
+      regreso: null
+    });
 
-  msg.innerText = "Salida registrada";
-};
+    msg.innerText = "Salida registrada correctamente";
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "Error al guardar";
+  }
+});
 </script>
+
+</body>
+</html>
