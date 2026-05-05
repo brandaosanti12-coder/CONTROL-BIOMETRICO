@@ -27,6 +27,12 @@ select, button {
   padding: 12px;
   margin: 10px;
   width: 100%;
+  border-radius: 8px;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .timer {
@@ -45,19 +51,23 @@ select, button {
 <div class="box">
   <h2>Salida Almuerzo</h2>
 
+  <!-- AREA -->
   <select id="area" onchange="cargarEmpleados()">
-    <option value="">Área</option>
+    <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
     <option value="FACTURACION">FACTURACIÓN</option>
     <option value="OFICINA">OFICINA</option>
   </select>
 
+  <!-- EMPLEADO -->
   <select id="nombre" onchange="verEstado()">
-    <option value="">Nombre</option>
+    <option value="">Selecciona tu nombre</option>
   </select>
 
-  <button id="salidaBtn" onclick="registrarSalida()">Salida</button>
+  <!-- BOTÓN -->
+  <button id="salidaBtn" onclick="registrarSalida()">Registrar salida</button>
 
+  <!-- INFO -->
   <p id="horaSalida"></p>
   <p id="timer" class="timer"></p>
   <p id="msg"></p>
@@ -67,14 +77,17 @@ select, button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-  apiKey: "TU_API_KEY",
+// 🔥 CONFIG FIREBASE (TUYA)
+const firebaseConfig = {
+  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
-});
+};
+
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 👥 EMPLEADOS
+// 👥 EMPLEADOS POR ÁREA
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
@@ -86,14 +99,16 @@ window.cargarEmpleados = function () {
   const area = document.getElementById("area").value;
   const select = document.getElementById("nombre");
 
-  select.innerHTML = '<option value="">Nombre</option>';
+  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
-  empleados[area]?.forEach(n => {
-    let o = document.createElement("option");
-    o.value = n;
-    o.textContent = n;
-    select.appendChild(o);
-  });
+  if (empleados[area]) {
+    empleados[area].forEach(n => {
+      const option = document.createElement("option");
+      option.value = n;
+      option.textContent = n;
+      select.appendChild(option);
+    });
+  }
 };
 
 // 🔍 VER ESTADO
@@ -114,7 +129,7 @@ window.verEstado = async function () {
   if (snap.exists()) {
     const d = snap.data();
 
-    if (d.salida) {
+    if (d.salida && d.salida.seconds) {
       btn.disabled = true;
 
       const salidaMs = d.salida.seconds * 1000;
@@ -127,7 +142,7 @@ window.verEstado = async function () {
   }
 };
 
-// ⏱ TIMER REAL
+// ⏱ TEMPORIZADOR
 function iniciarTimer(salida) {
   const timer = document.getElementById("timer");
 
@@ -151,10 +166,14 @@ function iniciarTimer(salida) {
   }, 1000);
 }
 
-// 🚀 REGISTRAR
+// 🚀 REGISTRAR SALIDA
 window.registrarSalida = async function () {
   const nombre = document.getElementById("nombre").value;
-  if (!nombre) return alert("Selecciona nombre");
+
+  if (!nombre) {
+    alert("Selecciona tu nombre");
+    return;
+  }
 
   const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
@@ -166,6 +185,7 @@ window.registrarSalida = async function () {
     return;
   }
 
+  // 🔥 GUARDAR
   await setDoc(ref, {
     nombre,
     fecha: hoy,
@@ -175,7 +195,10 @@ window.registrarSalida = async function () {
 
   document.getElementById("msg").innerText = "Salida registrada";
 
-  verEstado();
+  // 🔥 ESPERAR Y RECARGAR ESTADO
+  setTimeout(() => {
+    verEstado();
+  }, 1000);
 };
 </script>
 
