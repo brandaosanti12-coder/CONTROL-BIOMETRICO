@@ -27,22 +27,10 @@ select, button {
   padding: 12px;
   margin: 10px;
   width: 100%;
-  border-radius: 8px;
 }
 
-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.timer {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.rojo {
-  color: red;
-}
+.timer { font-size: 20px; font-weight: bold; }
+.rojo { color: red; }
 </style>
 </head>
 
@@ -51,81 +39,74 @@ button:disabled {
 <div class="box">
   <h2>Salida Almuerzo</h2>
 
-  <!-- AREA -->
   <select id="area" onchange="cargarEmpleados()">
-    <option value="">Selecciona área</option>
+    <option value="">Área</option>
     <option value="PLAYA">PLAYA</option>
     <option value="FACTURACION">FACTURACIÓN</option>
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <!-- EMPLEADO -->
   <select id="nombre" onchange="verEstado()">
-    <option value="">Selecciona tu nombre</option>
+    <option value="">Nombre</option>
   </select>
 
-  <!-- BOTÓN -->
   <button id="salidaBtn" onclick="registrarSalida()">Registrar salida</button>
 
-  <!-- INFO -->
   <p id="horaSalida"></p>
   <p id="timer" class="timer"></p>
-  <p id="msg"></p>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 CONFIG FIREBASE
-const firebaseConfig = {
+// 🔐 VALIDAR QR
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+const tipo = params.get("tipo");
+const hoy = new Date().toLocaleDateString('sv-SE');
+
+if (token !== hoy || tipo !== "salida") {
+  document.body.innerHTML = "<h2 style='color:red'>Acceso solo con QR de salida</h2>";
+  throw new Error("Acceso inválido");
+}
+
+// 🔥 FIREBASE
+const app = initializeApp({
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
-  projectId: "registro-bionetrico",
-};
-
-const app = initializeApp(firebaseConfig);
+  projectId: "registro-bionetrico"
+});
 const db = getFirestore(app);
-
-// 🧠 CONTROL TIMER
-let timerInterval = null;
 
 // 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
-  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
+  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE", "MISHEL MALDONADO"],
   OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
+let timerInterval = null;
+
 window.cargarEmpleados = function () {
   const area = document.getElementById("area").value;
   const select = document.getElementById("nombre");
-
-  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
+  select.innerHTML = '<option value="">Nombre</option>';
 
   empleados[area]?.forEach(n => {
-    let option = document.createElement("option");
-    option.value = n;
-    option.textContent = n;
-    select.appendChild(option);
+    let o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    select.appendChild(o);
   });
 };
 
-// 🔍 VER ESTADO
 window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
   if (!nombre) return;
 
-  const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
   const snap = await getDoc(ref);
-
-  const btn = document.getElementById("salidaBtn");
-
-  btn.disabled = false;
-  document.getElementById("horaSalida").innerText = "";
-  document.getElementById("timer").innerText = "";
 
   if (timerInterval) clearInterval(timerInterval);
 
@@ -133,81 +114,53 @@ window.verEstado = async function () {
     const d = snap.data();
 
     if (d.salida && d.salida.seconds) {
-      btn.disabled = true;
-
       const salidaMs = d.salida.seconds * 1000;
 
       document.getElementById("horaSalida").innerText =
         "Salida: " + new Date(salidaMs).toLocaleTimeString();
 
       iniciarTimer(salidaMs, nombre);
+      document.getElementById("salidaBtn").disabled = true;
     }
   }
 };
 
-// ⏱ TIMER INTELIGENTE
 function iniciarTimer(salida, nombre) {
-
-  if (timerInterval) clearInterval(timerInterval);
-
-  const timer = document.getElementById("timer");
-
   timerInterval = setInterval(async () => {
 
-    const hoy = new Date().toISOString().split("T")[0];
     const ref = doc(db, "registros", nombre + "_" + hoy);
     const snap = await getDoc(ref);
 
     if (snap.exists()) {
-      const data = snap.data();
-
-      // 🛑 DETENER SI YA REGRESÓ
-      if (data.regreso && data.regreso.seconds) {
+      const d = snap.data();
+      if (d.regreso && d.regreso.seconds) {
         clearInterval(timerInterval);
-        timer.innerText = "✅ Almuerzo finalizado";
-        timer.style.color = "green";
+        document.getElementById("timer").innerText = "Finalizado";
         return;
       }
     }
 
-    const ahora = Date.now();
-    const diff = ahora - salida;
-
-    const limite = 60 * 60 * 1000;
-    const restante = limite - diff;
-
+    const restante = (3600000 - (Date.now() - salida));
     if (restante <= 0) {
-      timer.innerText = "⛔ TIEMPO EXCEDIDO";
-      timer.classList.add("rojo");
+      document.getElementById("timer").innerText = "EXCEDIDO";
       return;
     }
 
-    const min = Math.floor(restante / 60000);
-    const seg = Math.floor((restante % 60000) / 1000);
-
-    timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
+    const m = Math.floor(restante/60000);
+    const s = Math.floor((restante%60000)/1000);
+    document.getElementById("timer").innerText = `${m}m ${s}s`;
 
   }, 1000);
 }
 
-// 🚀 REGISTRAR SALIDA
 window.registrarSalida = async function () {
   const nombre = document.getElementById("nombre").value;
+  if (!nombre) return alert("Selecciona nombre");
 
-  if (!nombre) {
-    alert("Selecciona tu nombre");
-    return;
-  }
-
-  const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
-
   const snap = await getDoc(ref);
 
-  if (snap.exists()) {
-    alert("Ya registraste salida");
-    return;
-  }
+  if (snap.exists()) return alert("Ya registrado");
 
   await setDoc(ref, {
     nombre,
@@ -216,13 +169,8 @@ window.registrarSalida = async function () {
     regreso: null
   });
 
-  document.getElementById("msg").innerText = "Salida registrada";
-
-  setTimeout(() => {
-    verEstado();
-  }, 1000);
+  setTimeout(verEstado, 1000);
 };
 </script>
-
 </body>
 </html>
