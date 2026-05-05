@@ -34,10 +34,10 @@ select, button {
 <body>
 
 <div class="box">
-  <h2>Retorno de Almuerzo</h2>
+  <h2>Retorno Almuerzo</h2>
 
   <!-- AREA -->
-  <select id="area" onchange="cargarEmpleados()">
+  <select id="area">
     <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
     <option value="FACTURACION">FACTURACIÓN</option>
@@ -49,35 +49,39 @@ select, button {
     <option value="">Selecciona tu nombre</option>
   </select>
 
-  <button onclick="marcarRetorno()">Registrar retorno</button>
+  <button id="btnRetorno">Registrar retorno</button>
 
   <p id="msg"></p>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// 🔴 CONFIG (usa la tuya)
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
 };
+
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// EMPLEADOS
+// 🔧 ELEMENTOS
+const areaSelect = document.getElementById("area");
+const nombreSelect = document.getElementById("nombre");
+const btn = document.getElementById("btnRetorno");
+const msg = document.getElementById("msg");
+
+// 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
   OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// REFERENCIAS
-const areaSelect = document.getElementById("area");
-const nombreSelect = document.getElementById("nombre");
-const msg = document.getElementById("msg");
-
 // 🔄 CARGAR EMPLEADOS
-window.cargarEmpleados = function () {
+areaSelect.addEventListener("change", () => {
   const area = areaSelect.value;
 
   nombreSelect.innerHTML = '<option value="">Selecciona tu nombre</option>';
@@ -90,9 +94,9 @@ window.cargarEmpleados = function () {
       nombreSelect.appendChild(opt);
     });
   }
-};
+});
 
-// 🔐 VALIDAR QR DINÁMICO
+// 🔐 VALIDAR QR
 function validarQR() {
   const token = new URLSearchParams(location.search).get("token");
   const hoy = new Date().toISOString().split("T")[0];
@@ -104,8 +108,8 @@ function validarQR() {
   return true;
 }
 
-// 🚀 REGISTRAR RETORNO
-window.marcarRetorno = async function () {
+// 🚀 REGISTRAR
+btn.addEventListener("click", async () => {
 
   if (!validarQR()) return;
 
@@ -126,9 +130,7 @@ window.marcarRetorno = async function () {
     return;
   }
 
-  const data = snap.data();
-
-  if (data.regreso) {
+  if (snap.data().regreso) {
     msg.innerText = "⚠️ Ya registraste retorno";
     return;
   }
@@ -138,7 +140,7 @@ window.marcarRetorno = async function () {
   });
 
   msg.innerText = "✅ Retorno registrado correctamente";
-};
+});
 </script>
 
 </body>
