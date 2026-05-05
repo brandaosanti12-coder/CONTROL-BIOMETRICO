@@ -20,6 +20,11 @@ body {
   border-radius: 15px;
   width: 320px;
   margin: auto;
+  box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+h2 {
+  font-size: 26px;
 }
 
 select, button {
@@ -27,167 +32,218 @@ select, button {
   padding: 12px;
   margin: 10px;
   width: 100%;
+  border-radius: 8px;
+}
+
+button {
+  background: #ffc107;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .timer {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: bold;
 }
 
 .rojo {
   color: red;
 }
-</style>
-</head>
 
+.footer {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  font-size: 12px;
+}
+</style>
+
+</head>
 <body>
 
 <div class="box">
   <h2>Salida Almuerzo</h2>
 
-  <select id="area">
-    <option value="">Área</option>
+  <!-- AREA -->
+  <select id="area" onchange="cargarEmpleados()">
+    <option value="">Selecciona área</option>
     <option value="PLAYA">PLAYA</option>
     <option value="FACTURACION">FACTURACIÓN</option>
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <select id="nombre">
-    <option value="">Nombre</option>
+  <!-- EMPLEADO -->
+  <select id="nombre" onchange="bloquearSeleccion()">
+    <option value="">Selecciona tu nombre</option>
   </select>
 
-  <button id="btn">Registrar salida</button>
+  <!-- BOTON -->
+  <button id="btn" onclick="registrarSalida()">Registrar salida</button>
 
   <p id="hora"></p>
-  <p class="timer" id="timer"></p>
+  <p id="timer" class="timer"></p>
   <p id="msg"></p>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<div class="footer">
+  Diseñado, elaborado y desarrollado por Navarrete Logistics
+</div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
-  authDomain: "registro-bionetrico.firebaseapp.com",
-  projectId: "registro-bionetrico",
+<script>
+const empleadosPorArea = {
+  PLAYA: [
+    "LEONARDO FLORES",
+    "RENE CHICAIZA",
+    "KEVIN ESCOBAR",
+    "ESTEBAN MALDONADO",
+    "RUBEN YANEZ"
+  ],
+  FACTURACION: [
+    "STEFANY PISANAN",
+    "DIEGO MELENDEZ",
+    "ANA MOROCHO",
+    "MARLON TENE"
+  ],
+  OFICINA: [
+    "BRANDON NAVARRETE",
+    "ANDRES SUASTE",
+    "HECTOR TORRES",
+    "IBETH BERMEO",
+    "MARIA JOSE CASTRO",
+    "MARIA JOSE SANDOVAL",
+    "JIMI CELI"
+  ]
 };
 
-const db = getFirestore(app);
+// 🔄 CARGAR EMPLEADOS
+function cargarEmpleados() {
+  const area = document.getElementById("area").value;
+  const select = document.getElementById("nombre");
 
-const empleados = {
-  PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
-  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
-  OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
-};
+  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
-const area = document.getElementById("area");
-const nombre = document.getElementById("nombre");
-const btn = document.getElementById("btn");
-const hora = document.getElementById("hora");
-const timer = document.getElementById("timer");
-const msg = document.getElementById("msg");
+  if (!area) return;
 
-// cargar empleados
-area.onchange = () => {
-  nombre.innerHTML = '<option value="">Nombre</option>';
-  empleados[area.value]?.forEach(n => {
-    let o = document.createElement("option");
-    o.value = n;
-    o.textContent = n;
-    nombre.appendChild(o);
+  empleadosPorArea[area].forEach(nombre => {
+    const option = document.createElement("option");
+    option.value = nombre;
+    option.textContent = nombre;
+    select.appendChild(option);
   });
-};
+}
 
-// 🔒 bloquear identidad
-nombre.onchange = () => {
-  localStorage.setItem("empleado", nombre.value);
-  localStorage.setItem("area", area.value);
-  nombre.disabled = true;
-  area.disabled = true;
-};
+// 🔒 BLOQUEAR SELECCIÓN
+function bloquearSeleccion() {
+  const nombre = document.getElementById("nombre").value;
+  const area = document.getElementById("area").value;
 
-// recuperar sesión
-window.onload = () => {
-  const emp = localStorage.getItem("empleado");
-  const ar = localStorage.getItem("area");
+  if (!nombre || !area) return;
 
-  if (emp && ar) {
-    area.value = ar;
-    area.onchange();
+  localStorage.setItem("empleado", nombre);
+  localStorage.setItem("area", area);
+
+  document.getElementById("nombre").disabled = true;
+  document.getElementById("area").disabled = true;
+}
+
+// 🔁 RECUPERAR SESIÓN
+window.onload = function () {
+  const usuario = localStorage.getItem("empleado");
+  const area = localStorage.getItem("area");
+
+  if (usuario && area) {
+    document.getElementById("area").value = area;
+    cargarEmpleados();
 
     setTimeout(() => {
-      nombre.value = emp;
-      nombre.disabled = true;
-      area.disabled = true;
-      verificar();
+      document.getElementById("nombre").value = usuario;
+      document.getElementById("nombre").disabled = true;
+      document.getElementById("area").disabled = true;
     }, 300);
   }
 };
 
-// verificar estado
-async function verificar() {
-  const emp = localStorage.getItem("empleado");
-  if (!emp) return;
-
-  const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", emp + "_" + hoy);
-  const snap = await getDoc(ref);
-
-  if (snap.exists()) {
-    btn.disabled = true;
-
-    const salida = snap.data().salida.seconds * 1000;
-    hora.innerText = "Salida: " + new Date(salida).toLocaleTimeString();
-
-    iniciarTimer(salida);
-  }
-}
-
 // ⏱ TEMPORIZADOR
-function iniciarTimer(salida) {
+function iniciarTimer(inicio) {
+  const timer = document.getElementById("timer");
+
   setInterval(() => {
     const ahora = Date.now();
-    const diff = ahora - salida;
+    const diff = ahora - inicio;
 
-    const limite = 60 * 60 * 1000; // 1 hora
-
-    let restante = limite - diff;
-
-    let min = Math.floor(restante / 60000);
-    let seg = Math.floor((restante % 60000) / 1000);
+    const limite = 60 * 60 * 1000;
+    const restante = limite - diff;
 
     if (restante <= 0) {
-      timer.innerText = "⛔ TIEMPO EXCEDIDO";
+      timer.innerText = "⛔ Tiempo excedido";
       timer.classList.add("rojo");
-    } else {
-      timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
+      return;
     }
 
+    const min = Math.floor(restante / 60000);
+    const seg = Math.floor((restante % 60000) / 1000);
+
+    timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
   }, 1000);
 }
 
-// registrar salida
-btn.onclick = async () => {
-  const emp = localStorage.getItem("empleado");
+// 🚀 REGISTRAR SALIDA
+function registrarSalida() {
+  const nombre = localStorage.getItem("empleado");
 
-  if (!emp) return alert("Selecciona nombre");
+  if (!nombre) {
+    alert("Selecciona tu nombre");
+    return;
+  }
 
-  const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", emp + "_" + hoy);
+  // evitar doble click
+  if (localStorage.getItem("salida")) return;
 
-  const snap = await getDoc(ref);
-  if (snap.exists()) return;
+  const ahora = Date.now();
 
-  await setDoc(ref, {
-    nombre: emp,
-    fecha: hoy,
-    salida: serverTimestamp(),
-    regreso: null
-  });
+  localStorage.setItem("salida", ahora);
 
-  msg.innerText = "Salida registrada";
-  verificar();
+  document.getElementById("hora").innerText =
+    "Salida: " + new Date(ahora).toLocaleTimeString();
+
+  document.getElementById("msg").innerText = "Salida registrada";
+
+  document.getElementById("btn").disabled = true;
+
+  iniciarTimer(ahora);
+}
+
+// 🔁 RECUPERAR SALIDA
+window.onload = function () {
+  const salida = localStorage.getItem("salida");
+
+  const usuario = localStorage.getItem("empleado");
+  const area = localStorage.getItem("area");
+
+  if (usuario && area) {
+    document.getElementById("area").value = area;
+    cargarEmpleados();
+
+    setTimeout(() => {
+      document.getElementById("nombre").value = usuario;
+      document.getElementById("nombre").disabled = true;
+      document.getElementById("area").disabled = true;
+    }, 300);
+  }
+
+  if (salida) {
+    document.getElementById("hora").innerText =
+      "Salida: " + new Date(parseInt(salida)).toLocaleTimeString();
+
+    document.getElementById("btn").disabled = true;
+
+    iniciarTimer(parseInt(salida));
+  }
 };
 </script>
 
