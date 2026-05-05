@@ -79,6 +79,16 @@ button:disabled {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// 🔐 VALIDACIÓN QR
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+const hoy = new Date().toISOString().split("T")[0];
+
+if (token !== hoy) {
+  document.body.innerHTML = "<h2 style='color:red'>Acceso no permitido</h2>";
+  throw new Error("QR inválido");
+}
+
 // 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
@@ -116,7 +126,6 @@ window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
   if (!nombre) return;
 
-  const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
   const snap = await getDoc(ref);
 
@@ -125,7 +134,10 @@ window.verEstado = async function () {
   btn.disabled = true;
   limpiar();
 
-  if (!snap.exists()) return;
+  if (!snap.exists()) {
+    document.getElementById("msg").innerText = "No hay salida registrada";
+    return;
+  }
 
   const d = snap.data();
 
@@ -151,7 +163,6 @@ window.registrarRetorno = async function () {
 
   if (!nombre) return alert("Selecciona tu nombre");
 
-  const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
 
   await updateDoc(ref, {
@@ -177,14 +188,14 @@ function mostrarResultado(d) {
   document.getElementById("horaRetorno").innerText =
     "Retorno: " + new Date(regreso).toLocaleTimeString();
 
-  const min = Math.floor(usado / 60000);
+  const minUsado = Math.floor(usado / 60000);
 
   if (restante < 0) {
     document.getElementById("resultado").innerHTML =
       `<span class="rojo">Se excedió por ${Math.abs(Math.floor(restante / 60000))} min</span>`;
   } else {
     document.getElementById("resultado").innerHTML =
-      `<span class="verde">Tiempo usado: ${min} min | Restante: ${Math.floor(restante / 60000)} min</span>`;
+      `<span class="verde">Tiempo usado: ${minUsado} min | Restante: ${Math.floor(restante / 60000)} min</span>`;
   }
 }
 

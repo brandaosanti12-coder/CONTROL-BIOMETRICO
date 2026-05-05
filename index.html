@@ -77,7 +77,7 @@ button:disabled {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 CONFIG FIREBASE (TUYA)
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
@@ -87,7 +87,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 👥 EMPLEADOS POR ÁREA
+// 🧠 CONTROL TIMER
+let timerInterval = null;
+
+// 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
@@ -101,14 +104,12 @@ window.cargarEmpleados = function () {
 
   select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
-  if (empleados[area]) {
-    empleados[area].forEach(n => {
-      const option = document.createElement("option");
-      option.value = n;
-      option.textContent = n;
-      select.appendChild(option);
-    });
-  }
+  empleados[area]?.forEach(n => {
+    let option = document.createElement("option");
+    option.value = n;
+    option.textContent = n;
+    select.appendChild(option);
+  });
 };
 
 // 🔍 VER ESTADO
@@ -126,6 +127,8 @@ window.verEstado = async function () {
   document.getElementById("horaSalida").innerText = "";
   document.getElementById("timer").innerText = "";
 
+  if (timerInterval) clearInterval(timerInterval);
+
   if (snap.exists()) {
     const d = snap.data();
 
@@ -137,16 +140,36 @@ window.verEstado = async function () {
       document.getElementById("horaSalida").innerText =
         "Salida: " + new Date(salidaMs).toLocaleTimeString();
 
-      iniciarTimer(salidaMs);
+      iniciarTimer(salidaMs, nombre);
     }
   }
 };
 
-// ⏱ TEMPORIZADOR
-function iniciarTimer(salida) {
+// ⏱ TIMER INTELIGENTE
+function iniciarTimer(salida, nombre) {
+
+  if (timerInterval) clearInterval(timerInterval);
+
   const timer = document.getElementById("timer");
 
-  setInterval(() => {
+  timerInterval = setInterval(async () => {
+
+    const hoy = new Date().toISOString().split("T")[0];
+    const ref = doc(db, "registros", nombre + "_" + hoy);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      const data = snap.data();
+
+      // 🛑 DETENER SI YA REGRESÓ
+      if (data.regreso && data.regreso.seconds) {
+        clearInterval(timerInterval);
+        timer.innerText = "✅ Almuerzo finalizado";
+        timer.style.color = "green";
+        return;
+      }
+    }
+
     const ahora = Date.now();
     const diff = ahora - salida;
 
@@ -163,6 +186,7 @@ function iniciarTimer(salida) {
     const seg = Math.floor((restante % 60000) / 1000);
 
     timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
+
   }, 1000);
 }
 
@@ -185,7 +209,6 @@ window.registrarSalida = async function () {
     return;
   }
 
-  // 🔥 GUARDAR
   await setDoc(ref, {
     nombre,
     fecha: hoy,
@@ -195,7 +218,6 @@ window.registrarSalida = async function () {
 
   document.getElementById("msg").innerText = "Salida registrada";
 
-  // 🔥 ESPERAR Y RECARGAR ESTADO
   setTimeout(() => {
     verEstado();
   }, 1000);
