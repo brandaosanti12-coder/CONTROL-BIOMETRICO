@@ -18,7 +18,7 @@ body {
   color: black;
   padding: 30px;
   border-radius: 15px;
-  width: 320px;
+  width: 330px;
   margin: auto;
 }
 
@@ -27,6 +27,15 @@ select, button {
   padding: 12px;
   margin: 10px;
   width: 100%;
+}
+
+.timer {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.rojo {
+  color: red;
 }
 </style>
 </head>
@@ -43,12 +52,14 @@ select, button {
     <option value="OFICINA">OFICINA</option>
   </select>
 
-  <select id="nombre">
+  <select id="nombre" onchange="verEstado()">
     <option value="">Nombre</option>
   </select>
 
-  <button onclick="registrar()">Registrar salida</button>
+  <button id="salidaBtn" onclick="registrarSalida()">Salida</button>
 
+  <p id="horaSalida"></p>
+  <p id="timer" class="timer"></p>
   <p id="msg"></p>
 </div>
 
@@ -63,7 +74,7 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-// 👥 EMPLEADOS EN CÓDIGO
+// 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
@@ -85,10 +96,64 @@ window.cargarEmpleados = function () {
   });
 };
 
-// 🚀 REGISTRAR SALIDA
-window.registrar = async function () {
+// 🔍 VER ESTADO
+window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
+  if (!nombre) return;
 
+  const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", nombre + "_" + hoy);
+  const snap = await getDoc(ref);
+
+  const btn = document.getElementById("salidaBtn");
+
+  btn.disabled = false;
+  document.getElementById("horaSalida").innerText = "";
+  document.getElementById("timer").innerText = "";
+
+  if (snap.exists()) {
+    const d = snap.data();
+
+    if (d.salida) {
+      btn.disabled = true;
+
+      const salidaMs = d.salida.seconds * 1000;
+
+      document.getElementById("horaSalida").innerText =
+        "Salida: " + new Date(salidaMs).toLocaleTimeString();
+
+      iniciarTimer(salidaMs);
+    }
+  }
+};
+
+// ⏱ TIMER REAL
+function iniciarTimer(salida) {
+  const timer = document.getElementById("timer");
+
+  setInterval(() => {
+    const ahora = Date.now();
+    const diff = ahora - salida;
+
+    const limite = 60 * 60 * 1000;
+    const restante = limite - diff;
+
+    if (restante <= 0) {
+      timer.innerText = "⛔ TIEMPO EXCEDIDO";
+      timer.classList.add("rojo");
+      return;
+    }
+
+    const min = Math.floor(restante / 60000);
+    const seg = Math.floor((restante % 60000) / 1000);
+
+    timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
+  }, 1000);
+}
+
+// 🚀 REGISTRAR
+window.registrarSalida = async function () {
+  const nombre = document.getElementById("nombre").value;
   if (!nombre) return alert("Selecciona nombre");
 
   const hoy = new Date().toISOString().split("T")[0];
@@ -109,6 +174,8 @@ window.registrar = async function () {
   });
 
   document.getElementById("msg").innerText = "Salida registrada";
+
+  verEstado();
 };
 </script>
 
