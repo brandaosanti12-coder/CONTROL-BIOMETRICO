@@ -28,112 +28,167 @@ select, button {
   margin: 10px;
   width: 100%;
 }
+
+.timer {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.rojo {
+  color: red;
+}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Salida a Almuerzo</h2>
+  <h2>Salida Almuerzo</h2>
 
   <select id="area">
-    <option value="">Selecciona área</option>
+    <option value="">Área</option>
     <option value="PLAYA">PLAYA</option>
     <option value="FACTURACION">FACTURACIÓN</option>
     <option value="OFICINA">OFICINA</option>
   </select>
 
   <select id="nombre">
-    <option value="">Selecciona tu nombre</option>
+    <option value="">Nombre</option>
   </select>
 
-  <button id="btnSalida">Registrar salida</button>
+  <button id="btn">Registrar salida</button>
 
+  <p id="hora"></p>
+  <p class="timer" id="timer"></p>
   <p id="msg"></p>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔴 CONFIG FIREBASE (USA EL TUYO)
 const firebaseConfig = {
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
 };
 
-const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔧 REFERENCIAS
-const areaSelect = document.getElementById("area");
-const nombreSelect = document.getElementById("nombre");
-const btnSalida = document.getElementById("btnSalida");
-const msg = document.getElementById("msg");
-
-// 👥 EMPLEADOS
 const empleados = {
   PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
   FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
   OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
-areaSelect.addEventListener("change", () => {
-  const area = areaSelect.value;
+const area = document.getElementById("area");
+const nombre = document.getElementById("nombre");
+const btn = document.getElementById("btn");
+const hora = document.getElementById("hora");
+const timer = document.getElementById("timer");
+const msg = document.getElementById("msg");
 
-  nombreSelect.innerHTML = '<option value="">Selecciona tu nombre</option>';
+// cargar empleados
+area.onchange = () => {
+  nombre.innerHTML = '<option value="">Nombre</option>';
+  empleados[area.value]?.forEach(n => {
+    let o = document.createElement("option");
+    o.value = n;
+    o.textContent = n;
+    nombre.appendChild(o);
+  });
+};
 
-  if (empleados[area]) {
-    empleados[area].forEach(nombre => {
-      const option = document.createElement("option");
-      option.value = nombre;
-      option.textContent = nombre;
-      nombreSelect.appendChild(option);
-    });
+// 🔒 bloquear identidad
+nombre.onchange = () => {
+  localStorage.setItem("empleado", nombre.value);
+  localStorage.setItem("area", area.value);
+  nombre.disabled = true;
+  area.disabled = true;
+};
+
+// recuperar sesión
+window.onload = () => {
+  const emp = localStorage.getItem("empleado");
+  const ar = localStorage.getItem("area");
+
+  if (emp && ar) {
+    area.value = ar;
+    area.onchange();
+
+    setTimeout(() => {
+      nombre.value = emp;
+      nombre.disabled = true;
+      area.disabled = true;
+      verificar();
+    }, 300);
   }
-});
+};
 
-// 🔐 BLOQUEAR
-nombreSelect.addEventListener("change", () => {
-  const nombre = nombreSelect.value;
-  const area = areaSelect.value;
-
-  if (!nombre || !area) return;
-
-  localStorage.setItem("empleado", nombre);
-  localStorage.setItem("area", area);
-
-  areaSelect.disabled = true;
-  nombreSelect.disabled = true;
-});
-
-// 🚀 REGISTRAR SALIDA
-btnSalida.addEventListener("click", async () => {
-  const nombre = localStorage.getItem("empleado");
-
-  if (!nombre) {
-    alert("Selecciona tu nombre");
-    return;
-  }
+// verificar estado
+async function verificar() {
+  const emp = localStorage.getItem("empleado");
+  if (!emp) return;
 
   const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", emp + "_" + hoy);
+  const snap = await getDoc(ref);
 
-  try {
-    await setDoc(doc(db, "registros", nombre + "_" + hoy), {
-      nombre,
-      fecha: hoy,
-      salida: serverTimestamp(),
-      regreso: null
-    });
+  if (snap.exists()) {
+    btn.disabled = true;
 
-    msg.innerText = "Salida registrada correctamente";
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "Error al guardar";
+    const salida = snap.data().salida.seconds * 1000;
+    hora.innerText = "Salida: " + new Date(salida).toLocaleTimeString();
+
+    iniciarTimer(salida);
   }
-});
+}
+
+// ⏱ TEMPORIZADOR
+function iniciarTimer(salida) {
+  setInterval(() => {
+    const ahora = Date.now();
+    const diff = ahora - salida;
+
+    const limite = 60 * 60 * 1000; // 1 hora
+
+    let restante = limite - diff;
+
+    let min = Math.floor(restante / 60000);
+    let seg = Math.floor((restante % 60000) / 1000);
+
+    if (restante <= 0) {
+      timer.innerText = "⛔ TIEMPO EXCEDIDO";
+      timer.classList.add("rojo");
+    } else {
+      timer.innerText = `Tiempo restante: ${min}m ${seg}s`;
+    }
+
+  }, 1000);
+}
+
+// registrar salida
+btn.onclick = async () => {
+  const emp = localStorage.getItem("empleado");
+
+  if (!emp) return alert("Selecciona nombre");
+
+  const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", emp + "_" + hoy);
+
+  const snap = await getDoc(ref);
+  if (snap.exists()) return;
+
+  await setDoc(ref, {
+    nombre: emp,
+    fecha: hoy,
+    salida: serverTimestamp(),
+    regreso: null
+  });
+
+  msg.innerText = "Salida registrada";
+  verificar();
+};
 </script>
 
 </body>

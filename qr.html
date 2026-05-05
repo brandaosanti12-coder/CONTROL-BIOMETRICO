@@ -1,146 +1,18 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Retorno Almuerzo</title>
+<html>
+<body style="text-align:center">
 
-<style>
-body {
-  font-family: Arial;
-  text-align: center;
-  background: #28a745;
-  color: white;
-  padding: 50px;
-}
+<h2>QR Retorno</h2>
 
-.box {
-  background: white;
-  color: black;
-  padding: 30px;
-  border-radius: 15px;
-  width: 320px;
-  margin: auto;
-}
+<img id="qr">
 
-select, button {
-  font-size: 18px;
-  padding: 12px;
-  margin: 10px;
-  width: 100%;
-}
-</style>
-</head>
+<script>
+const hoy = new Date().toISOString().split("T")[0];
 
-<body>
+const url = "https://brandaosanti12-coder.github.io/CONTROL-BIOMETRICO/retorno.html?token=" + hoy;
 
-<div class="box">
-  <h2>Retorno Almuerzo</h2>
-
-  <!-- AREA -->
-  <select id="area">
-    <option value="">Selecciona área</option>
-    <option value="PLAYA">PLAYA</option>
-    <option value="FACTURACION">FACTURACIÓN</option>
-    <option value="OFICINA">OFICINA</option>
-  </select>
-
-  <!-- EMPLEADO -->
-  <select id="nombre">
-    <option value="">Selecciona tu nombre</option>
-  </select>
-
-  <button id="btnRetorno">Registrar retorno</button>
-
-  <p id="msg"></p>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// 🔴 CONFIG (usa la tuya)
-  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
-  authDomain: "registro-bionetrico.firebaseapp.com",
-  projectId: "registro-bionetrico",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// 🔧 ELEMENTOS
-const areaSelect = document.getElementById("area");
-const nombreSelect = document.getElementById("nombre");
-const btn = document.getElementById("btnRetorno");
-const msg = document.getElementById("msg");
-
-// 👥 EMPLEADOS
-const empleados = {
-  PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
-  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
-  OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
-};
-
-// 🔄 CARGAR EMPLEADOS
-areaSelect.addEventListener("change", () => {
-  const area = areaSelect.value;
-
-  nombreSelect.innerHTML = '<option value="">Selecciona tu nombre</option>';
-
-  if (empleados[area]) {
-    empleados[area].forEach(n => {
-      const opt = document.createElement("option");
-      opt.value = n;
-      opt.textContent = n;
-      nombreSelect.appendChild(opt);
-    });
-  }
-});
-
-// 🔐 VALIDAR QR
-function validarQR() {
-  const token = new URLSearchParams(location.search).get("token");
-  const hoy = new Date().toISOString().split("T")[0];
-
-  if (token !== hoy) {
-    document.body.innerHTML = "<h2>❌ QR expirado</h2>";
-    return false;
-  }
-  return true;
-}
-
-// 🚀 REGISTRAR
-btn.addEventListener("click", async () => {
-
-  if (!validarQR()) return;
-
-  const nombre = nombreSelect.value;
-
-  if (!nombre) {
-    alert("Selecciona tu nombre");
-    return;
-  }
-
-  const hoy = new Date().toISOString().split("T")[0];
-  const ref = doc(db, "registros", nombre + "_" + hoy);
-
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    msg.innerText = "❌ No tienes salida registrada";
-    return;
-  }
-
-  if (snap.data().regreso) {
-    msg.innerText = "⚠️ Ya registraste retorno";
-    return;
-  }
-
-  await updateDoc(ref, {
-    regreso: serverTimestamp()
-  });
-
-  msg.innerText = "✅ Retorno registrado correctamente";
-});
+document.getElementById("qr").src =
+"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(url);
 </script>
 
 </body>

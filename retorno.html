@@ -1,51 +1,76 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Retorno</title>
-</head>
-
-<body style="text-align:center; background:#28a745; color:white;">
+<html>
+<body style="text-align:center">
 
 <h2>Retorno Almuerzo</h2>
-<button onclick="marcarRetorno()">Registrar retorno</button>
+
+<select id="nombre">
+<option value="">Selecciona tu nombre</option>
+<option>BRANDON NAVARRETE</option>
+<option>ANDRES SUASTE</option>
+<option>HECTOR TORRES</option>
+<option>IBETH BERMEO</option>
+<option>MARIA JOSE CASTRO</option>
+<option>MARIA JOSE SANDOVAL</option>
+<option>JIMI CELI</option>
+<option>STEFANY PISANAN</option>
+<option>DIEGO MELENDEZ</option>
+<option>ANA MOROCHO</option>
+<option>MARLON TENE</option>
+<option>LEONARDO FLORES</option>
+<option>RENE CHICAIZA</option>
+<option>KEVIN ESCOBAR</option>
+<option>ESTEBAN MALDONADO</option>
+<option>RUBEN YANEZ</option>
+</select>
+
+<button onclick="retorno()">Registrar retorno</button>
+
 <p id="msg"></p>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-  apiKey: "TU_API_KEY",
+const firebaseConfig = {
+  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
-});
+};
 const db = getFirestore(app);
 
-// 🔐 VALIDACIÓN QR
-function validarQR() {
+window.retorno = async function () {
+
   const token = new URLSearchParams(location.search).get("token");
   const hoy = new Date().toISOString().split("T")[0];
-  return token === hoy;
-}
 
-window.marcarRetorno = async () => {
-
-  if (!validarQR()) {
-    document.body.innerHTML = "<h2>QR inválido</h2>";
+  if (token !== hoy) {
+    document.body.innerHTML = "<h2>QR expirado</h2>";
     return;
   }
 
-  const nombre = localStorage.getItem("empleado");
-  const hoy = new Date().toISOString().split("T")[0];
+  const nombre = document.getElementById("nombre").value;
 
-  await updateDoc(doc(db,"registros",nombre+"_"+hoy), {
-    regreso:serverTimestamp()
+  if (!nombre) return alert("Selecciona nombre");
+
+  const ref = doc(db, "registros", nombre + "_" + hoy);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    document.getElementById("msg").innerText = "No tienes salida registrada";
+    return;
+  }
+
+  if (snap.data().regreso) {
+    document.getElementById("msg").innerText = "Ya registraste retorno";
+    return;
+  }
+
+  await updateDoc(ref, {
+    regreso: serverTimestamp()
   });
 
-  msg.innerText = "Retorno registrado";
-
-  localStorage.clear();
+  document.getElementById("msg").innerText = "Retorno registrado";
 };
 </script>
 
