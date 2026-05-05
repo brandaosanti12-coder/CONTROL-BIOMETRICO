@@ -1,77 +1,200 @@
 <!DOCTYPE html>
-<html>
-<body style="text-align:center">
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Retorno Almuerzo</title>
 
-<h2>Retorno Almuerzo</h2>
+<style>
+body {
+  font-family: Arial;
+  text-align: center;
+  background: linear-gradient(135deg, #28a745, #5be584);
+  color: white;
+  padding: 50px;
+}
 
-<select id="nombre">
-<option value="">Selecciona tu nombre</option>
-<option>BRANDON NAVARRETE</option>
-<option>ANDRES SUASTE</option>
-<option>HECTOR TORRES</option>
-<option>IBETH BERMEO</option>
-<option>MARIA JOSE CASTRO</option>
-<option>MARIA JOSE SANDOVAL</option>
-<option>JIMI CELI</option>
-<option>STEFANY PISANAN</option>
-<option>DIEGO MELENDEZ</option>
-<option>ANA MOROCHO</option>
-<option>MARLON TENE</option>
-<option>LEONARDO FLORES</option>
-<option>RENE CHICAIZA</option>
-<option>KEVIN ESCOBAR</option>
-<option>ESTEBAN MALDONADO</option>
-<option>RUBEN YANEZ</option>
-</select>
+.box {
+  background: white;
+  color: black;
+  padding: 30px;
+  border-radius: 15px;
+  width: 330px;
+  margin: auto;
+}
 
-<button onclick="retorno()">Registrar retorno</button>
+select, button {
+  font-size: 18px;
+  padding: 12px;
+  margin: 10px;
+  width: 100%;
+  border-radius: 8px;
+}
 
-<p id="msg"></p>
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.rojo {
+  color: red;
+  font-weight: bold;
+}
+
+.verde {
+  color: green;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Retorno Almuerzo</h2>
+
+  <!-- AREA -->
+  <select id="area" onchange="cargarEmpleados()">
+    <option value="">Selecciona área</option>
+    <option value="PLAYA">PLAYA</option>
+    <option value="FACTURACION">FACTURACIÓN</option>
+    <option value="OFICINA">OFICINA</option>
+  </select>
+
+  <!-- EMPLEADO -->
+  <select id="nombre" onchange="verEstado()">
+    <option value="">Selecciona tu nombre</option>
+  </select>
+
+  <!-- BOTÓN -->
+  <button id="retornoBtn" onclick="registrarRetorno()">Registrar retorno</button>
+
+  <!-- INFO -->
+  <p id="horaSalida"></p>
+  <p id="horaRetorno"></p>
+  <p id="resultado"></p>
+  <p id="msg"></p>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
   authDomain: "registro-bionetrico.firebaseapp.com",
   projectId: "registro-bionetrico",
 };
+
+const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-window.retorno = async function () {
+// 👥 EMPLEADOS
+const empleados = {
+  PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
+  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE"],
+  OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
+};
 
-  const token = new URLSearchParams(location.search).get("token");
-  const hoy = new Date().toISOString().split("T")[0];
+// 🔄 CARGAR EMPLEADOS
+window.cargarEmpleados = function () {
+  const area = document.getElementById("area").value;
+  const select = document.getElementById("nombre");
 
-  if (token !== hoy) {
-    document.body.innerHTML = "<h2>QR expirado</h2>";
-    return;
-  }
+  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
 
+  empleados[area]?.forEach(n => {
+    let option = document.createElement("option");
+    option.value = n;
+    option.textContent = n;
+    select.appendChild(option);
+  });
+};
+
+// 🔍 VER ESTADO
+window.verEstado = async function () {
   const nombre = document.getElementById("nombre").value;
+  if (!nombre) return;
 
-  if (!nombre) return alert("Selecciona nombre");
-
+  const hoy = new Date().toISOString().split("T")[0];
   const ref = doc(db, "registros", nombre + "_" + hoy);
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) {
-    document.getElementById("msg").innerText = "No tienes salida registrada";
-    return;
+  const btn = document.getElementById("retornoBtn");
+
+  btn.disabled = true;
+  limpiar();
+
+  if (!snap.exists()) return;
+
+  const d = snap.data();
+
+  if (d.salida && d.salida.seconds) {
+    const salidaMs = d.salida.seconds * 1000;
+
+    document.getElementById("horaSalida").innerText =
+      "Salida: " + new Date(salidaMs).toLocaleTimeString();
+
+    if (!d.regreso) {
+      btn.disabled = false;
+    }
   }
 
-  if (snap.data().regreso) {
-    document.getElementById("msg").innerText = "Ya registraste retorno";
-    return;
+  if (d.regreso && d.regreso.seconds) {
+    mostrarResultado(d);
   }
+};
+
+// 🚀 REGISTRAR RETORNO
+window.registrarRetorno = async function () {
+  const nombre = document.getElementById("nombre").value;
+
+  if (!nombre) return alert("Selecciona tu nombre");
+
+  const hoy = new Date().toISOString().split("T")[0];
+  const ref = doc(db, "registros", nombre + "_" + hoy);
 
   await updateDoc(ref, {
     regreso: serverTimestamp()
   });
 
   document.getElementById("msg").innerText = "Retorno registrado";
+
+  setTimeout(() => {
+    verEstado();
+  }, 1000);
 };
+
+// 🧠 CALCULAR TIEMPO
+function mostrarResultado(d) {
+  const salida = d.salida.seconds * 1000;
+  const regreso = d.regreso.seconds * 1000;
+
+  const usado = regreso - salida;
+  const limite = 60 * 60 * 1000;
+  const restante = limite - usado;
+
+  document.getElementById("horaRetorno").innerText =
+    "Retorno: " + new Date(regreso).toLocaleTimeString();
+
+  const min = Math.floor(usado / 60000);
+
+  if (restante < 0) {
+    document.getElementById("resultado").innerHTML =
+      `<span class="rojo">Se excedió por ${Math.abs(Math.floor(restante / 60000))} min</span>`;
+  } else {
+    document.getElementById("resultado").innerHTML =
+      `<span class="verde">Tiempo usado: ${min} min | Restante: ${Math.floor(restante / 60000)} min</span>`;
+  }
+}
+
+// 🧹 LIMPIAR
+function limpiar() {
+  document.getElementById("horaSalida").innerText = "";
+  document.getElementById("horaRetorno").innerText = "";
+  document.getElementById("resultado").innerText = "";
+  document.getElementById("msg").innerText = "";
+}
 </script>
 
 </body>
