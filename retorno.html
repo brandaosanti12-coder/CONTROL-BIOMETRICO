@@ -1,211 +1,113 @@
+<!-- PEGA EXACTAMENTE ESTE -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Retorno Almuerzo</title>
+<title>Retorno</title>
 
 <style>
-body {
-  font-family: Arial;
-  text-align: center;
-  background: linear-gradient(135deg, #28a745, #5be584);
-  color: white;
-  padding: 50px;
-}
-
-.box {
-  background: white;
-  color: black;
-  padding: 30px;
-  border-radius: 15px;
-  width: 330px;
-  margin: auto;
-}
-
-select, button {
-  font-size: 18px;
-  padding: 12px;
-  margin: 10px;
-  width: 100%;
-  border-radius: 8px;
-}
-
-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.rojo {
-  color: red;
-  font-weight: bold;
-}
-
-.verde {
-  color: green;
-  font-weight: bold;
-}
+body { font-family: Arial; text-align:center; padding:50px; background:#28a745; color:white;}
+.box {background:white;color:black;padding:30px;border-radius:10px;width:320px;margin:auto;}
+.verde{color:green;font-weight:bold;}
+.rojo{color:red;font-weight:bold;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>Retorno Almuerzo</h2>
+<h2>Retorno</h2>
 
-  <!-- AREA -->
-  <select id="area" onchange="cargarEmpleados()">
-    <option value="">Selecciona área</option>
-    <option value="PLAYA">PLAYA</option>
-    <option value="FACTURACION">FACTURACIÓN</option>
-    <option value="OFICINA">OFICINA</option>
-  </select>
+<select id="area" onchange="cargarEmpleados()">
+<option value="">Área</option>
+<option value="PLAYA">PLAYA</option>
+<option value="FACTURACION">FACTURACIÓN</option>
+<option value="OFICINA">OFICINA</option>
+</select>
 
-  <!-- EMPLEADO -->
-  <select id="nombre" onchange="verEstado()">
-    <option value="">Selecciona tu nombre</option>
-  </select>
+<select id="nombre" onchange="verEstado()">
+<option value="">Nombre</option>
+</select>
 
-  <!-- BOTÓN -->
-  <button id="retornoBtn" onclick="registrarRetorno()">Registrar retorno</button>
+<button onclick="registrarRetorno()">Registrar retorno</button>
 
-  <!-- INFO -->
-  <p id="horaSalida"></p>
-  <p id="horaRetorno"></p>
-  <p id="resultado"></p>
-  <p id="msg"></p>
+<p id="resultado"></p>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔐 VALIDACIÓN QR
 const params = new URLSearchParams(window.location.search);
 const token = params.get("token");
-const hoy = new Date().toISOString().split("T")[0];
+const tipo = params.get("tipo");
+const hoy = new Date().toLocaleDateString('sv-SE');
 
-if (token !== hoy) {
-  document.body.innerHTML = "<h2 style='color:red'>Acceso no permitido</h2>";
-  throw new Error("QR inválido");
+if (token !== hoy || tipo !== "retorno") {
+  document.body.innerHTML = "Acceso inválido";
+  throw new Error();
 }
 
-// 🔥 CONFIG FIREBASE
-const firebaseConfig = {
-  apiKey: "AIzaSyCyzE_spj6e0VASt5FP50_5m2Ya-GJloM4",
-  authDomain: "registro-bionetrico.firebaseapp.com",
-  projectId: "registro-bionetrico",
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey:"AIzaSy...",
+  authDomain:"registro-bionetrico.firebaseapp.com",
+  projectId:"registro-bionetrico"
+});
 const db = getFirestore(app);
 
-// 👥 EMPLEADOS
 const empleados = {
-  PLAYA: ["LEONARDO FLORES","RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
-  FACTURACION: ["STEFANY PISANAN","DIEGO MELENDEZ","ANA MOROCHO","MARLON TENE","MISHELL MALDONADO"],
-  OFICINA: ["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
+  PLAYA:["RENE CHICAIZA","KEVIN ESCOBAR","ESTEBAN MALDONADO","RUBEN YANEZ"],
+  FACTURACION:["STEFANY PISANAN","ANA MOROCHO","MARLON TENE"],
+  OFICINA:["BRANDON NAVARRETE","ANDRES SUASTE","HECTOR TORRES","IBETH BERMEO","MARIA JOSE CASTRO","MARIA JOSE SANDOVAL","JIMI CELI"]
 };
 
-// 🔄 CARGAR EMPLEADOS
-window.cargarEmpleados = function () {
-  const area = document.getElementById("area").value;
-  const select = document.getElementById("nombre");
-
-  select.innerHTML = '<option value="">Selecciona tu nombre</option>';
-
-  empleados[area]?.forEach(n => {
-    let option = document.createElement("option");
-    option.value = n;
-    option.textContent = n;
-    select.appendChild(option);
+window.cargarEmpleados=function(){
+  const a=document.getElementById("area").value;
+  const s=document.getElementById("nombre");
+  s.innerHTML="<option>Nombre</option>";
+  empleados[a]?.forEach(n=>{
+    let o=document.createElement("option");
+    o.value=n;o.textContent=n;
+    s.appendChild(o);
   });
 };
 
-// 🔍 VER ESTADO
-window.verEstado = async function () {
-  const nombre = document.getElementById("nombre").value;
-  if (!nombre) return;
+window.verEstado=async function(){
+  const nombre=document.getElementById("nombre").value;
+  const ref=doc(db,"registros",nombre+"_"+hoy);
+  const snap=await getDoc(ref);
 
-  const ref = doc(db, "registros", nombre + "_" + hoy);
-  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
 
-  const btn = document.getElementById("retornoBtn");
-
-  btn.disabled = true;
-  limpiar();
-
-  if (!snap.exists()) {
-    document.getElementById("msg").innerText = "No hay salida registrada";
-    return;
-  }
-
-  const d = snap.data();
-
-  if (d.salida && d.salida.seconds) {
-    const salidaMs = d.salida.seconds * 1000;
-
-    document.getElementById("horaSalida").innerText =
-      "Salida: " + new Date(salidaMs).toLocaleTimeString();
-
-    if (!d.regreso) {
-      btn.disabled = false;
-    }
-  }
-
-  if (d.regreso && d.regreso.seconds) {
-    mostrarResultado(d);
+  const d=snap.data();
+  if(d.salida){
+    const salida=d.salida.seconds*1000;
+    window.salidaGlobal=salida;
   }
 };
 
-// 🚀 REGISTRAR RETORNO
-window.registrarRetorno = async function () {
-  const nombre = document.getElementById("nombre").value;
+window.registrarRetorno=async function(){
+  const nombre=document.getElementById("nombre").value;
+  const ref=doc(db,"registros",nombre+"_"+hoy);
 
-  if (!nombre) return alert("Selecciona tu nombre");
+  await updateDoc(ref,{regreso:serverTimestamp()});
 
-  const ref = doc(db, "registros", nombre + "_" + hoy);
+  const snap=await getDoc(ref);
+  const d=snap.data();
 
-  await updateDoc(ref, {
-    regreso: serverTimestamp()
-  });
+  const salida=d.salida.seconds*1000;
+  const regreso=d.regreso.seconds*1000;
 
-  document.getElementById("msg").innerText = "Retorno registrado";
+  const usado=(regreso-salida)/60000;
 
-  setTimeout(() => {
-    verEstado();
-  }, 1000);
-};
-
-// 🧠 CALCULAR TIEMPO
-function mostrarResultado(d) {
-  const salida = d.salida.seconds * 1000;
-  const regreso = d.regreso.seconds * 1000;
-
-  const usado = regreso - salida;
-  const limite = 60 * 60 * 1000;
-  const restante = limite - usado;
-
-  document.getElementById("horaRetorno").innerText =
-    "Retorno: " + new Date(regreso).toLocaleTimeString();
-
-  const minUsado = Math.floor(usado / 60000);
-
-  if (restante < 0) {
-    document.getElementById("resultado").innerHTML =
-      `<span class="rojo">Se excedió por ${Math.abs(Math.floor(restante / 60000))} min</span>`;
-  } else {
-    document.getElementById("resultado").innerHTML =
-      `<span class="verde">Tiempo usado: ${minUsado} min | Restante: ${Math.floor(restante / 60000)} min</span>`;
+  if(usado>60){
+    document.getElementById("resultado").innerHTML=
+    `<span class="rojo">Excedido ${Math.floor(usado-60)} min</span>`;
+  }else{
+    document.getElementById("resultado").innerHTML=
+    `<span class="verde">Tiempo usado ${Math.floor(usado)} min</span>`;
   }
-}
-
-// 🧹 LIMPIAR
-function limpiar() {
-  document.getElementById("horaSalida").innerText = "";
-  document.getElementById("horaRetorno").innerText = "";
-  document.getElementById("resultado").innerText = "";
-  document.getElementById("msg").innerText = "";
-}
+};
 </script>
 
 </body>
